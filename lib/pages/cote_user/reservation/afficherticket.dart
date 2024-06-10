@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class AfficherTicketPage extends StatefulWidget {
   final String userId;
@@ -74,6 +77,16 @@ class _AfficherTicketPageState extends State<AfficherTicketPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Afficher Ticket'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.download),
+            onPressed: () {
+              if (ticketData != null) {
+                _downloadPdf();
+              }
+            },
+          ),
+        ],
       ),
       body: errorMessage.isNotEmpty
           ? Center(child: Text(errorMessage))
@@ -223,6 +236,157 @@ class _AfficherTicketPageState extends State<AfficherTicketPage> {
               value,
               style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.w500),
               textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadPdf() {
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Container(
+                    width: 80.0,
+                    height: 80.0,
+                    child: pw.BarcodeWidget(
+                      barcode: pw.Barcode.qrCode(),
+                      data:
+                          'userId=${ticketData!['userId']},reservationId=${ticketData!['reservationId']}',
+                    ),
+                  ),
+                  pw.SizedBox(width: 16.0),
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Ticket de réservation',
+                          style: pw.TextStyle(
+                            fontSize: 20.0,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 8.0),
+                        pw.Text(
+                          'Date et Heure: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now())}',
+                          style: pw.TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: pw.FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 24.0),
+              pw.Text(
+                'Détails de la réservation',
+                style: pw.TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8.0),
+              _buildPdfDetailRow('Nom', ticketData!['name']),
+              _buildPdfDetailRow('Prénom', ticketData!['familyName']),
+              _buildPdfDetailRow('Email', ticketData!['email']),
+              _buildPdfDetailRow(
+                  'Début',
+                  DateFormat('dd/MM/yyyy HH:mm')
+                      .format((ticketData!['debut'] as Timestamp).toDate())),
+              _buildPdfDetailRow(
+                  'Fin',
+                  DateFormat('dd/MM/yyyy HH:mm')
+                      .format((ticketData!['fin'] as Timestamp).toDate())),
+              _buildPdfDetailRow('Type de place', ticketData!['typePlace']),
+              _buildPdfDetailRow('ID de la place', ticketData!['idPlace']),
+              _buildPdfDetailRow('Date d\'aujourd\'hui',
+                  DateFormat('dd/MM/yyyy').format(DateTime.now())),
+              _buildPdfDetailRow('Nom du parking', ticketData!['parkingName']),
+              _buildPdfDetailRow('Place', ticketData!['parkingPlace']),
+              pw.SizedBox(height: 16.0),
+              pw.Container(
+                padding: pw.EdgeInsets.all(16.0),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromInt(0xFFE0E0E0),
+                  borderRadius: pw.BorderRadius.circular(8.0),
+                  boxShadow: [
+                    pw.BoxShadow(
+                      color: PdfColor.fromInt(0x40000000),
+                      blurRadius: 6.0,
+                      offset: PdfPoint(0, 2),
+                    ),
+                  ],
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Prix',
+                      style: pw.TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.Text(
+                      '${ticketData!['prix']} DA',
+                      style: pw.TextStyle(
+                        fontSize: 18.0,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColor.fromInt(0xFF4CAF50),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16.0),
+              pw.Container(
+                width: double.infinity,
+                height: 80.0,
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.code128(),
+                  data:
+                      'userId=${ticketData!['userId']},reservationId=${ticketData!['reservationId']}',
+                  drawText: false,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
+  pw.Widget _buildPdfDetailRow(String label, String value) {
+    return pw.Padding(
+      padding: pw.EdgeInsets.symmetric(vertical: 4.0),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(fontSize: 16.0),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: pw.TextStyle(
+                  fontSize: 16.0, fontWeight: pw.FontWeight.normal),
+              textAlign: pw.TextAlign.right,
             ),
           ),
         ],

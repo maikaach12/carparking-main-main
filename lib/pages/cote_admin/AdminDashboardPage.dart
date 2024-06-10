@@ -1,5 +1,6 @@
 import 'package:carparking/pages/cote_admin/gerer/Gerer_compte.dart';
 import 'package:carparking/pages/cote_admin/gerer/Gerer_parking.dart';
+import 'package:carparking/pages/cote_admin/promotion.dart';
 import 'package:carparking/pages/cote_admin/stat/ReclamationStatistics.dart';
 import 'package:carparking/pages/cote_admin/stat/ReservationFrequencyPage.dart';
 import 'package:carparking/pages/cote_admin/stat/UserStatistics.dart';
@@ -206,6 +207,104 @@ class Navbar extends StatelessWidget {
             icon: Icon(Icons.bar_chart),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class GererParkingPage extends StatefulWidget {
+  @override
+  _GererParkingPageState createState() => _GererParkingPageState();
+}
+
+class _GererParkingPageState extends State<GererParkingPage> {
+  Future<void> _ajouterPromotion(String parkingId) async {
+    // Ouvrir une boîte de dialogue ou une page séparée pour saisir les détails de la promotion
+    final remiseEnPourcentage = await showDialog<double>(
+      context: context,
+      builder: (context) => PromotionDialog(
+        parkingId: parkingId,
+      ),
+    );
+
+    if (remiseEnPourcentage != null) {
+      final dateDebutPromotion = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime.now(),
+        lastDate: DateTime(2100),
+      );
+
+      if (dateDebutPromotion != null) {
+        final dateFinPromotion = await showDatePicker(
+          context: context,
+          initialDate: dateDebutPromotion
+              .add(Duration(days: 30)), // Durée par défaut de 30 jours
+          firstDate: dateDebutPromotion,
+          lastDate: DateTime(2100),
+        );
+
+        if (dateFinPromotion != null) {
+          // Ajouter la promotion au document de parking
+          await FirebaseFirestore.instance
+              .collection('parking')
+              .doc(parkingId)
+              .update({
+            'promotion': {
+              'remiseEnPourcentage': remiseEnPourcentage,
+              'dateDebutPromotion': Timestamp.fromDate(dateDebutPromotion),
+              'dateFinPromotion': Timestamp.fromDate(dateFinPromotion),
+            },
+          });
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Gérer Parking'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('parking').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text('Une erreur s\'est produite');
+          }
+
+          if (!snapshot.hasData) {
+            return CircularProgressIndicator();
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              final parkingDoc = snapshot.data!.docs[index];
+              final parkingId = parkingDoc.id;
+
+              return ListTile(
+                title: Text(parkingDoc['nom']),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        // Code pour modifier le parking
+                      },
+                      icon: Icon(Icons.edit),
+                    ),
+                    IconButton(
+                      onPressed: () => _ajouterPromotion(parkingId),
+                      icon: Icon(Icons.add_box),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

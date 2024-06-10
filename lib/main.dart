@@ -32,18 +32,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'CarParking.dz',
-        home: FirstPage()
-
-        //PaiementOnlinePage(reservationId: 'rYYqO8wzkDp9Q8Qq6GAp', )
-        );
+        home: FirstPage());
   }
 }
-
-// AuthPage pour gérer l'authentification
-
-// Page de connexion de l'administrateur
-
-
-
-
-// Page d'inscription de l'utilisateur

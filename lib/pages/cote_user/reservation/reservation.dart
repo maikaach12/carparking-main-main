@@ -31,6 +31,12 @@ class _ReservationPageState extends State<ReservationPage> {
     true,
     false
   ]; // Initialisé pour sélectionner "Standard" par défaut
+  Timer? _notificationTimer;
+
+  void _showReservationNotification() {
+    // Implement your notification logic here
+    print('Notification: Your reservation is starting in 10 minutes!');
+  }
 
   Future<void> _selectDebutReservation(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -227,7 +233,8 @@ class _ReservationPageState extends State<ReservationPage> {
                 'decrementPlacesDisponible': false,
                 'userId': userId,
                 'matricule': _selectedMatricule,
-                'etat': 'en cours'
+                'etat': 'en cours',
+                'evaluation': 0
                 // Add user ID to reservation data
               }).then((documentRef) async {
                 reservationId = documentRef.id;
@@ -267,7 +274,23 @@ class _ReservationPageState extends State<ReservationPage> {
                 }
 
                 final nombreTranches = (dureeMinutes / 10).ceil();
-                final prix = (nombreTranches * prixParTranche).toInt();
+                int prix = (nombreTranches * prixParTranche).toInt();
+
+                final promotion = parkingDoc.data()?['promotion'];
+                if (promotion != null) {
+                  final DateTime dateDebutPromotion =
+                      promotion['dateDebutPromotion'].toDate();
+                  final DateTime dateFinPromotion =
+                      promotion['dateFinPromotion'].toDate();
+                  final double remiseEnPourcentage =
+                      promotion['remiseEnPourcentage'];
+
+                  final DateTime now = DateTime.now();
+                  if (now.isAfter(dateDebutPromotion) &&
+                      now.isBefore(dateFinPromotion)) {
+                    prix = (prix * (1 - (remiseEnPourcentage / 100))).toInt();
+                  }
+                }
 
                 await documentRef.update({'prix': prix});
 
